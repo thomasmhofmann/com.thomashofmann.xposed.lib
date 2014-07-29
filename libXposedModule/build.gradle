@@ -1,0 +1,51 @@
+apply plugin: 'com.android.library'
+
+android {
+    compileSdkVersion 'rovo89:Xposed Bridge API 2.6.1:19'
+    buildToolsVersion "19.1.0"
+
+    defaultConfig {
+        applicationId "xposed.lib"
+        minSdkVersion 17
+        targetSdkVersion 19
+        versionCode 1
+        versionName "1.0"
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_7
+        targetCompatibility JavaVersion.VERSION_1_7
+    }
+
+    buildTypes {
+        release {
+            runProguard false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+}
+
+dependencies {
+    compile fileTree(dir: 'libs', include: ['*.jar'])
+}
+
+apply plugin: 'maven'
+
+def aarFile = file('build/outputs/aar/libXposedModule.aar')
+
+artifacts {
+    archives aarFile
+}
+
+uploadArchives() {
+    repositories {
+        mavenDeployer {
+            repository(url: "file:///c:/myrepo/android")
+            pom.groupId = 'xposed'
+            pom.artifactId = 'xposed.lib'
+            pom.version = '1.0.0-SNAPSHOT'
+        }
+    }
+}
+
+assembleRelease.finalizedBy uploadArchives
