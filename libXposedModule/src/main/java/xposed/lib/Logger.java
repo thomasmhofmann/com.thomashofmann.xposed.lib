@@ -127,7 +127,11 @@ public class Logger {
     }
 
     static void appendToLog(String tag, String message) {
-        XposedBridge.log(tag + ": " + message);
+        try {
+            XposedBridge.log(tag + ": " + message);
+        } catch(Throwable t) {
+            Log.e("xposed.lib", "Unable to log to Xposed log due to: " + t + "\nThis is only supported from within a module.");
+        }
     }
 
     private static boolean shouldLog() {
@@ -135,7 +139,7 @@ public class Logger {
     }
 
     private static boolean shouldLogToXposedLog() {
-        return Logger.settings != null && Logger.settings.getPreferences().getBoolean("pref_log_to_xposed_log_state", true);
+        return Logger.settings != null && Logger.settings.getPreferences().getBoolean("pref_log_to_xposed_log_state", false);
     }
 
     private static String getStackTraceString(Throwable t) {

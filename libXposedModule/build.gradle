@@ -1,7 +1,7 @@
 apply plugin: 'com.android.library'
 
 android {
-    compileSdkVersion 'rovo89:Xposed Bridge API 2.6.1:19'
+    compileSdkVersion 19
     buildToolsVersion "19.1.0"
 
     defaultConfig {
@@ -27,6 +27,7 @@ android {
 
 dependencies {
     compile fileTree(dir: 'libs', include: ['*.jar'])
+    provided fileTree(dir: 'lib-xposed', include: ['*.jar'])
 }
 
 apply plugin: 'maven'
@@ -49,3 +50,8 @@ uploadArchives() {
 }
 
 assembleRelease.finalizedBy uploadArchives
+
+
+android.libraryVariants.all { variant ->
+    variant.packageLibrary.exclude( 'libs/XposedBridgeApi-54.jar' )
+}

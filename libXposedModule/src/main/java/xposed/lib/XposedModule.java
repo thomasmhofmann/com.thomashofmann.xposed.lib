@@ -17,6 +17,8 @@ import android.widget.Toast;
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -44,19 +46,18 @@ public abstract class XposedModule extends BroadcastReceiver implements IXposedH
 
     protected abstract String getPreferencesChangedAction();
 
-    protected  void applicationTerminated(int pid) {
+    protected void applicationTerminated(int pid) {
     }
 
     protected Procedure1<XC_MethodHook.MethodHookParam> hookApplicationContextOnCreateCode = new Procedure1<XC_MethodHook.MethodHookParam>() {
         @Override
         public void apply(XC_MethodHook.MethodHookParam methodHookParam) {
-            Logger.v("Executing hooked method " + methodHookParam.method.getName() + " on " + methodHookParam.thisObject + ". Capturing ApplicationContext and registering broadcast receiver for preference changes.");
+            Logger.v("Executing hooked method " + methodHookParam.method.getName() + " on " + methodHookParam.thisObject + ". Capturing Application Context.");
             Object applicationContextProvider = methodHookParam.thisObject;
             Context applicationContext;
-            if(applicationContextProvider instanceof Context) {
+            if (applicationContextProvider instanceof Context) {
                 applicationContext = ((Context) applicationContextProvider).getApplicationContext();
                 Logger.v("Application context has been captured.");
-                applicationContext.registerReceiver(XposedModule.this, new IntentFilter(getPreferencesChangedAction()));
             } else {
                 Logger.w("Could not capture ApplicationContext from «applicationContextProvider». It is not a Context.");
                 return;
@@ -72,7 +73,7 @@ public abstract class XposedModule extends BroadcastReceiver implements IXposedH
             Logger.d("Executing hooked method " + methodHookParam.method.getName() + " on " + methodHookParam.thisObject + ". Unregistering broadcast receiver for preference changes and cleaning up.");
             Object applicationContextProvider = methodHookParam.thisObject;
             Context applicationContext;
-            if(applicationContextProvider instanceof Context) {
+            if (applicationContextProvider instanceof Context) {
                 applicationContext = ((Context) applicationContextProvider).getApplicationContext();
                 applicationContext.unregisterReceiver(XposedModule.this);
                 applicationContextsByPid.remove(Process.myPid());
@@ -85,10 +86,25 @@ public abstract class XposedModule extends BroadcastReceiver implements IXposedH
         }
     };
 
+    protected Procedure1<XC_MethodHook.MethodHookParam> hookSystemContextCode = new Procedure1<XC_MethodHook.MethodHookParam>() {
+        @Override
+        public void apply(XC_MethodHook.MethodHookParam methodHookParam) {
+            Logger.v("Executing hooked method " + methodHookParam.method.getName() + " on " + methodHookParam.thisObject + ". Capturing System Context.");
+            Context context = retrieveContextFromActivityThread();
+            setApplicationContext(context);
+        }
+    };
+
     protected void setApplicationContext(Context context) {
         int pid = Process.myPid();
+        if(applicationContextsByPid.containsKey(pid)) {
+            Logger.v("Not setting ApplicationContext for PID " + pid + ". It is already saved.");
+            return;
+        }
         Logger.v("Setting ApplicationContext for PID " + pid + ". Context is " + context + ".");
         applicationContextsByPid.put(pid, context);
+        Logger.v("Registering BroadcastReceiver for action: " + getPreferencesChangedAction());
+        context.registerReceiver(XposedModule.this, new IntentFilter(getPreferencesChangedAction()));
         String targetPackage = targetPackagesByPid.get(pid);
         Logger.v("target package for pid " + pid + " is " + targetPackage);
         if (targetPackage == null) {
@@ -98,19 +114,16 @@ public abstract class XposedModule extends BroadcastReceiver implements IXposedH
         applicationContextAvailable(context);
     }
 
-    protected  void applicationContextAvailable(Context context) {
+    protected void applicationContextAvailable(Context context) {
     }
 
     protected Context getApplicationContext() {
         int pid = Process.myPid();
         Context context = applicationContextsByPid.get(pid);
-        if(context != null) {
+        if (context != null) {
             Logger.d("Request for ApplicationContext for PID " + pid + ". Returning " + context + ".");
         } else {
-            context = getContextFromActivityThread();
-            if(context != null) {
-                setApplicationContext(context);
-            }
+            Logger.e("Request for ApplicationContext for PID " + pid + ". Context not available. Returning null.");
         }
         return context;
     }
@@ -130,15 +143,15 @@ public abstract class XposedModule extends BroadcastReceiver implements IXposedH
     }
 
     protected void captureApplicationContext(XC_LoadPackage.LoadPackageParam loadPackageParam) {
-        if(loadPackageParam.appInfo == null || loadPackageParam.appInfo.className == null) {
-            Logger.w("appInfo in LoadPackageParam is null");
-            Context context = getContextFromActivityThread();
-            if(context != null) {
-                setApplicationContext(context);
-            }
-            return;
+        if (loadPackageParam.appInfo == null || loadPackageParam.appInfo.className == null) {
+            Logger.w("appInfo in LoadPackageParam is null. Trying to hook ActivityThread to retrieve a system context.");
+            hookActivityThread(loadPackageParam);
+        } else {
+            hookApplication(loadPackageParam);
         }
+    }
 
+    private void hookApplication(XC_LoadPackage.LoadPackageParam loadPackageParam) {
         String className = loadPackageParam.appInfo.className;
         ClassLoader classLoader = loadPackageParam.classLoader;
         Logger.d("Setting up hook to capture application context called for class " + className);
@@ -167,35 +180,41 @@ public abstract class XposedModule extends BroadcastReceiver implements IXposedH
         }
     }
 
-    private Context getContextFromActivityThread() {
+    private void hookActivityThread(XC_LoadPackage.LoadPackageParam loadPackageParam) {
+        AfterMethodHook afterSystemMainHook = new AfterMethodHook(hookSystemContextCode);
+        hookMethod("com.android.server.am.ActivityManagerService", loadPackageParam.classLoader, "systemReady", Runnable.class, afterSystemMainHook);
+    }
+
+    private Context retrieveContextFromActivityThread() {
         try {
             Class<?> activityThreadClass = Class.forName("android.app.ActivityThread");
-            Field field = activityThreadClass.getDeclaredField("mSystemContext");
-            field.setAccessible(true);
-            Object value = field.get(null);
-            if(value instanceof Context) {
+            Method currentActivityThreadMethod = activityThreadClass.getDeclaredMethod("currentActivityThread");
+            Object activityThread = currentActivityThreadMethod.invoke(null);
+            Method getSystemContextMethod = activityThreadClass.getDeclaredMethod("getSystemContext");
+            Object systemContext = getSystemContextMethod.invoke(activityThread);
+            if (systemContext instanceof Context) {
                 Logger.v("Got the system Context from the ActivityThread");
-                return (Context)value;
+                return (Context) systemContext;
             } else {
-                Logger.v("Value of field mSystemContext is null");
+                Logger.v("Result of getSystemContext method call on ActivityThread is :" + systemContext);
             }
-        } catch (ClassNotFoundException | NoSuchFieldException | IllegalAccessException e) {
+        } catch (ClassNotFoundException | IllegalAccessException | NoSuchMethodException | InvocationTargetException e) {
             Logger.w(e.toString());
         }
         return null;
     }
 
-    protected void hookMethod(String className, ClassLoader classLoader, String methodName, Object... parameterTypes) {
+    protected void hookMethod(String className, ClassLoader classLoader, String methodName, Object... parameterTypesAndCallback) {
         Logger.i("Hooking " + className + "#" + methodName);
         try {
-            findAndHookMethodInClassHierarchy(className, classLoader, methodName, parameterTypes);
+            findAndHookMethodInClassHierarchy(className, classLoader, methodName, parameterTypesAndCallback);
         } catch (Exception e) {
             Logger.e("Failed to hook method " + className + "#" + methodName, e);
         }
     }
 
-    protected  XC_MethodHook.Unhook findAndHookMethodInClassHierarchy(String className, ClassLoader classLoader,
-                                                                         String methodName, Object... parameterTypesAndCallback) {
+    protected XC_MethodHook.Unhook findAndHookMethodInClassHierarchy(String className, ClassLoader classLoader,
+                                                                     String methodName, Object... parameterTypesAndCallback) {
         Class clazz = XposedHelpers.findClass(className, classLoader);
         boolean notAtObject = clazz != Object.class;
         while (notAtObject) {
@@ -259,7 +278,7 @@ public abstract class XposedModule extends BroadcastReceiver implements IXposedH
             return -1;
         }
         StringBuilder stringBuilder = new StringBuilder();
-        for (String detail: details) {
+        for (String detail : details) {
             stringBuilder.append(detail).append(", ");
         }
         Logger.i("Creating notification for '" + title + "-" + stringBuilder.toString() + "'");
@@ -273,7 +292,7 @@ public abstract class XposedModule extends BroadcastReceiver implements IXposedH
             if (details.length > 1) {
                 Notification.InboxStyle inboxStyle = new Notification.InboxStyle();
                 inboxStyle.setBigContentTitle(title);
-                for (String detail: details) {
+                for (String detail : details) {
                     inboxStyle.addLine(detail);
                 }
                 notificationBuilder.setStyle(inboxStyle);
@@ -283,13 +302,13 @@ public abstract class XposedModule extends BroadcastReceiver implements IXposedH
         }
 
 
-        NotificationManager notificationManager = (NotificationManager)context.getSystemService(Context.NOTIFICATION_SERVICE);
+        NotificationManager notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
         notificationManager.notify(notificationId, notificationBuilder.build());
         notificationId = notificationId + 1;
         return notificationId;
     }
 
-    protected  int createNotification(String title, PendingIntent pendingIntent) {
+    protected int createNotification(String title, PendingIntent pendingIntent) {
         return createNotification(getApplicationContext(), title, pendingIntent);
     }
 
@@ -306,7 +325,7 @@ public abstract class XposedModule extends BroadcastReceiver implements IXposedH
         notificationBuilder.setContentTitle(title);
         notificationBuilder.setContentIntent(pendingIntent);
 
-        NotificationManager notificationManager = (NotificationManager)context.getSystemService(Context.NOTIFICATION_SERVICE);
+        NotificationManager notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
         notificationManager.notify(notificationId, notificationBuilder.build());
         notificationId = notificationId + 1;
         return notificationId;
@@ -334,7 +353,7 @@ public abstract class XposedModule extends BroadcastReceiver implements IXposedH
         if (details != null) {
             if (details.length > 1) {
                 StringBuilder stringBuilder = new StringBuilder();
-                for (String detail: details) {
+                for (String detail : details) {
                     stringBuilder.append(detail).append("\n\n");
                 }
                 intent.putExtra(Intent.EXTRA_TEXT, stringBuilder.toString());
