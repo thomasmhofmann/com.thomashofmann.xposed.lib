@@ -1,4 +1,4 @@
-package xposed.lib;
+package com.thomashofmann.xposed.lib;
 
 
 public abstract class Procedure2<T1, T2> {

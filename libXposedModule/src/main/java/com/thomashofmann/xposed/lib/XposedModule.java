@@ -1,4 +1,4 @@
-package xposed.lib;
+package com.thomashofmann.xposed.lib;
 
 import android.app.Activity;
 import android.app.Application;
@@ -16,7 +16,6 @@ import android.widget.Toast;
 
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
-import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.HashMap;
@@ -204,7 +203,11 @@ public abstract class XposedModule extends BroadcastReceiver implements IXposedH
         return null;
     }
 
-    protected void hookMethod(String className, ClassLoader classLoader, String methodName, Object... parameterTypesAndCallback) {
+//    protected void hookMethod(String className, ClassLoader classLoader, String methodName, Object... parameterTypesAndCallback) {
+//        hookMethod(className, classLoader, methodName, parameterTypesAndCallback);
+//    }
+
+    protected void hookMethod(String className, ClassLoader classLoader, String methodName, Object[] parameterTypesAndCallback) {
         Logger.i("Hooking " + className + "#" + methodName);
         try {
             findAndHookMethodInClassHierarchy(className, classLoader, methodName, parameterTypesAndCallback);
@@ -213,8 +216,13 @@ public abstract class XposedModule extends BroadcastReceiver implements IXposedH
         }
     }
 
+//    protected XC_MethodHook.Unhook findAndHookMethodInClassHierarchy(String className, ClassLoader classLoader,
+//                                                                     String methodName, Object... parameterTypesAndCallback) {
+//            findAndHookMethodInClassHierarchy(className,classLoader,methodName,parameterTypesAndCallback);
+//    }
+
     protected XC_MethodHook.Unhook findAndHookMethodInClassHierarchy(String className, ClassLoader classLoader,
-                                                                     String methodName, Object... parameterTypesAndCallback) {
+                                                                     String methodName, Object[] parameterTypesAndCallback) {
         Class clazz = XposedHelpers.findClass(className, classLoader);
         boolean notAtObject = clazz != Object.class;
         while (notAtObject) {
@@ -238,10 +246,15 @@ public abstract class XposedModule extends BroadcastReceiver implements IXposedH
     @Override
     public void onReceive(Context context, Intent intent) {
         Logger.d("Received intent " + intent);
-        if (intent.getAction().equals(getPreferencesChangedAction())) {
-            Logger.i("Reloading settings due to broadcast.");
-            settings.reload();
-            doHandlePreferenceChanges();
+        try {
+
+            if (intent.getAction().equals(getPreferencesChangedAction())) {
+                Logger.i("Reloading settings due to broadcast.");
+                settings.reload();
+                doHandlePreferenceChanges();
+            }
+        } catch (Throwable t) {
+            Logger.e("Exception during Intent processing.", t);
         }
     }
 

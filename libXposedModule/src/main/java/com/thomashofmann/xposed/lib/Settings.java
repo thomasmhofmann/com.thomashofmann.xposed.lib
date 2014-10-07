@@ -1,4 +1,4 @@
-package xposed.lib;
+package com.thomashofmann.xposed.lib;
 
 
 import android.content.SharedPreferences;

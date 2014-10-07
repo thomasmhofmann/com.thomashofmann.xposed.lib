@@ -1,9 +1,7 @@
-package xposed.lib;
+package com.thomashofmann.xposed.lib;
 
 import android.content.Context;
 import android.content.Intent;
-import android.content.SharedPreferences;
-import android.content.SharedPreferences.OnSharedPreferenceChangeListener;
 import android.os.Bundle;
 import android.preference.PreferenceFragment;
 import android.util.Log;
@@ -22,7 +20,7 @@ public abstract class XposedPreferenceFragment extends PreferenceFragment { // i
     public void onPause() {
         super.onPause();
  //       getPreferenceManager().getSharedPreferences().unregisterOnSharedPreferenceChangeListener(this);
-        Log.i("SSCF", "Sending broadcast to trigger reload of preferences.");
+        Logger.i("Sending broadcast to trigger reload of preferences.");
         Intent intent = new Intent(getPreferencesChangedAction());
         getActivity().sendBroadcast(intent);
     }
