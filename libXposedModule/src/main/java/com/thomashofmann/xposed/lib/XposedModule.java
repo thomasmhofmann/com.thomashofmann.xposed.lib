@@ -203,9 +203,9 @@ public abstract class XposedModule extends BroadcastReceiver implements IXposedH
         return null;
     }
 
-//    protected void hookMethod(String className, ClassLoader classLoader, String methodName, Object... parameterTypesAndCallback) {
-//        hookMethod(className, classLoader, methodName, parameterTypesAndCallback);
-//    }
+    protected void hookMethod(String className, ClassLoader classLoader, String methodName, Object... parameterTypesAndCallback) {
+        hookMethod(className, classLoader, methodName, parameterTypesAndCallback);
+    }
 
     protected void hookMethod(String className, ClassLoader classLoader, String methodName, Object[] parameterTypesAndCallback) {
         Logger.i("Hooking " + className + "#" + methodName);
@@ -216,10 +216,10 @@ public abstract class XposedModule extends BroadcastReceiver implements IXposedH
         }
     }
 
-//    protected XC_MethodHook.Unhook findAndHookMethodInClassHierarchy(String className, ClassLoader classLoader,
-//                                                                     String methodName, Object... parameterTypesAndCallback) {
-//            findAndHookMethodInClassHierarchy(className,classLoader,methodName,parameterTypesAndCallback);
-//    }
+    protected XC_MethodHook.Unhook findAndHookMethodInClassHierarchy(String className, ClassLoader classLoader,
+                                                                     String methodName, Object... parameterTypesAndCallback) {
+            findAndHookMethodInClassHierarchy(className,classLoader,methodName,parameterTypesAndCallback);
+    }
 
     protected XC_MethodHook.Unhook findAndHookMethodInClassHierarchy(String className, ClassLoader classLoader,
                                                                      String methodName, Object[] parameterTypesAndCallback) {
