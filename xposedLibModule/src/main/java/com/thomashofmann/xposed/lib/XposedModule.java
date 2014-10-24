@@ -94,9 +94,9 @@ public abstract class XposedModule extends BroadcastReceiver implements IXposedH
         }
     };
 
-    protected void setApplicationContext(Context context) {
+    private void setApplicationContext(Context context) {
         int pid = Process.myPid();
-        if(applicationContextsByPid.containsKey(pid)) {
+        if (applicationContextsByPid.containsKey(pid)) {
             Logger.v("Not setting ApplicationContext for PID " + pid + ". It is already saved.");
             return;
         }
@@ -116,7 +116,7 @@ public abstract class XposedModule extends BroadcastReceiver implements IXposedH
     protected void applicationContextAvailable(Context context) {
     }
 
-    protected Context getApplicationContext() {
+    public Context getApplicationContext() {
         int pid = Process.myPid();
         Context context = applicationContextsByPid.get(pid);
         if (context != null) {
@@ -127,21 +127,21 @@ public abstract class XposedModule extends BroadcastReceiver implements IXposedH
         return context;
     }
 
-    protected String getTargetPackage() {
+    public String getTargetPackage() {
         int pid = Process.myPid();
         String targetPackage = targetPackagesByPid.get(pid);
         Logger.d("Request for target package for PID " + pid + ". Returning " + targetPackage + ".");
         return targetPackage;
     }
 
-    protected XC_LoadPackage.LoadPackageParam getLoadPackageParam() {
+    public XC_LoadPackage.LoadPackageParam getLoadPackageParam() {
         int pid = Process.myPid();
         XC_LoadPackage.LoadPackageParam loadPackageParam = loadPackageParamByPid.get(pid);
         Logger.d("Request for loadPackageParam for PID " + pid + ". Returning " + loadPackageParam + ".");
         return loadPackageParam;
     }
 
-    protected void captureApplicationContext(XC_LoadPackage.LoadPackageParam loadPackageParam) {
+    private void captureApplicationContext(XC_LoadPackage.LoadPackageParam loadPackageParam) {
         if (loadPackageParam.appInfo == null || loadPackageParam.appInfo.className == null) {
             Logger.w("appInfo in LoadPackageParam is null. Trying to hook ActivityThread to retrieve a system context.");
             hookActivityThread(loadPackageParam);
@@ -203,11 +203,7 @@ public abstract class XposedModule extends BroadcastReceiver implements IXposedH
         return null;
     }
 
-    protected void hookMethod(String className, ClassLoader classLoader, String methodName, Object... parameterTypesAndCallback) {
-        hookMethod(className, classLoader, methodName, parameterTypesAndCallback);
-    }
-
-    protected void hookMethod(String className, ClassLoader classLoader, String methodName, Object[] parameterTypesAndCallback) {
+    public void hookMethod(String className, ClassLoader classLoader, String methodName, Object... parameterTypesAndCallback) {
         Logger.i("Hooking " + className + "#" + methodName);
         try {
             findAndHookMethodInClassHierarchy(className, classLoader, methodName, parameterTypesAndCallback);
@@ -216,13 +212,8 @@ public abstract class XposedModule extends BroadcastReceiver implements IXposedH
         }
     }
 
-    protected XC_MethodHook.Unhook findAndHookMethodInClassHierarchy(String className, ClassLoader classLoader,
-                                                                     String methodName, Object... parameterTypesAndCallback) {
-            findAndHookMethodInClassHierarchy(className,classLoader,methodName,parameterTypesAndCallback);
-    }
-
-    protected XC_MethodHook.Unhook findAndHookMethodInClassHierarchy(String className, ClassLoader classLoader,
-                                                                     String methodName, Object[] parameterTypesAndCallback) {
+    public XC_MethodHook.Unhook findAndHookMethodInClassHierarchy(String className, ClassLoader classLoader,
+                                                                  String methodName, Object... parameterTypesAndCallback) {
         Class clazz = XposedHelpers.findClass(className, classLoader);
         boolean notAtObject = clazz != Object.class;
         while (notAtObject) {
@@ -239,7 +230,7 @@ public abstract class XposedModule extends BroadcastReceiver implements IXposedH
         throw new NoSuchMethodError(methodName);
     }
 
-    protected Settings getSettings() {
+    public Settings getSettings() {
         return settings;
     }
 
@@ -281,11 +272,11 @@ public abstract class XposedModule extends BroadcastReceiver implements IXposedH
 
     protected abstract void doHandleLoadPackage();
 
-    protected void createNotification(String title, String... details) {
+    public void createNotification(String title, String... details) {
         createNotification(getApplicationContext(), title, details);
     }
 
-    protected int createNotification(Context context, String title, String... details) {
+    public int createNotification(Context context, String title, String... details) {
         if (context == null) {
             Logger.w("Cannot create notification without context.");
             return -1;
@@ -300,7 +291,7 @@ public abstract class XposedModule extends BroadcastReceiver implements IXposedH
         notificationBuilder.setSmallIcon(getNotificationIconResourceId());
         notificationBuilder.setContentTitle(title);
         if (details.length > 0) {
-            String detailsText = details[0].substring(0, Math.min(details.length, 50));
+            String detailsText = details[0].substring(0, Math.min(details.length, 40));
             notificationBuilder.setContentText(detailsText);
             if (details.length > 1) {
                 Notification.InboxStyle inboxStyle = new Notification.InboxStyle();
@@ -321,11 +312,11 @@ public abstract class XposedModule extends BroadcastReceiver implements IXposedH
         return notificationId;
     }
 
-    protected int createNotification(String title, PendingIntent pendingIntent) {
+    public int createNotification(String title, PendingIntent pendingIntent) {
         return createNotification(getApplicationContext(), title, pendingIntent);
     }
 
-    protected int createNotification(Context context, String title, PendingIntent pendingIntent) {
+    public int createNotification(Context context, String title, PendingIntent pendingIntent) {
         if (context == null) {
             Logger.w("Cannot create notification without context.");
             return -1;
@@ -344,11 +335,7 @@ public abstract class XposedModule extends BroadcastReceiver implements IXposedH
         return notificationId;
     }
 
-    protected int createNotification(UnexpectedException e) {
-        return createNotification(getApplicationContext(), e);
-    }
-
-    protected int createNotification(Context context, UnexpectedException e, String... details) {
+    public int createNotification(Context context, String title, UnexpectedException e, String... details) {
         if (context == null) {
             Logger.w("Cannot create notification without context.");
             return -1;
@@ -356,10 +343,14 @@ public abstract class XposedModule extends BroadcastReceiver implements IXposedH
 
         ByteArrayOutputStream byteStream = new ByteArrayOutputStream();
         e.printStackTrace(new PrintStream(byteStream));
-        return createNotification(context, e.toString(), byteStream.toString());
+        String[] newDetails = new String[details.length + 2];
+        newDetails[0] = e.getMessage();
+        System.arraycopy(details, 0, newDetails, 1, details.length);
+        newDetails[newDetails.length - 1] = byteStream.toString();
+        return createNotification(context, title, newDetails);
     }
 
-    protected PendingIntent buildIntentForNotification(Context context, String subject, String... details) {
+    public PendingIntent buildIntentForNotification(Context context, String subject, String... details) {
         Intent intent = new Intent();
         intent.setAction(Intent.ACTION_SEND);
         intent.putExtra(Intent.EXTRA_SUBJECT, subject);
@@ -378,15 +369,15 @@ public abstract class XposedModule extends BroadcastReceiver implements IXposedH
         return PendingIntent.getActivity(context, notificationId, intent, PendingIntent.FLAG_ONE_SHOT);
     }
 
-    protected int getNotificationIconResourceId() {
+    public int getNotificationIconResourceId() {
         return 0x7f020000;
     }
 
-    protected void displayToast(String text) {
+    public void displayToast(String text) {
         displayToast(getApplicationContext(), text);
     }
 
-    protected void displayToast(Context context, String text) {
+    public void displayToast(Context context, String text) {
         if (context == null) {
             Logger.w("Cannot create toast without context.");
         }

@@ -1,1 +1,1 @@
-include ':libXposedModule'
+include ':xposedLibModule'
