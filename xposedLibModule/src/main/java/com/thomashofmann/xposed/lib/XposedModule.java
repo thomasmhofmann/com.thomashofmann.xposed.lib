@@ -272,26 +272,19 @@ public abstract class XposedModule extends BroadcastReceiver implements IXposedH
 
     protected abstract void doHandleLoadPackage();
 
-    public void createNotification(String title, String... details) {
-        createNotification(getApplicationContext(), title, details);
-    }
-
-    public int createNotification(Context context, String title, String... details) {
-        if (context == null) {
-            Logger.w("Cannot create notification without context.");
-            return -1;
-        }
+    public int createNotification(String title, String... details) {
         StringBuilder stringBuilder = new StringBuilder();
         for (String detail : details) {
             stringBuilder.append(detail).append(", ");
         }
         Logger.i("Creating notification for '" + title + "-" + stringBuilder.toString() + "'");
 
+        Context context = getApplicationContext();
         Notification.Builder notificationBuilder = new Notification.Builder(context);
         notificationBuilder.setSmallIcon(getNotificationIconResourceId());
         notificationBuilder.setContentTitle(title);
         if (details.length > 0) {
-            String detailsText = details[0].substring(0, Math.min(details.length, 40));
+            String detailsText = details[0].substring(0, Math.min(details.length, 30));
             notificationBuilder.setContentText(detailsText);
             if (details.length > 1) {
                 Notification.InboxStyle inboxStyle = new Notification.InboxStyle();
@@ -313,17 +306,9 @@ public abstract class XposedModule extends BroadcastReceiver implements IXposedH
     }
 
     public int createNotification(String title, PendingIntent pendingIntent) {
-        return createNotification(getApplicationContext(), title, pendingIntent);
-    }
-
-    public int createNotification(Context context, String title, PendingIntent pendingIntent) {
-        if (context == null) {
-            Logger.w("Cannot create notification without context.");
-            return -1;
-        }
-
         Logger.i("Creating notification for " + title + " - with PendingIntent " + pendingIntent);
 
+        Context context = getApplicationContext();
         Notification.Builder notificationBuilder = new Notification.Builder(context);
         notificationBuilder.setSmallIcon(getNotificationIconResourceId());
         notificationBuilder.setContentTitle(title);
@@ -335,19 +320,15 @@ public abstract class XposedModule extends BroadcastReceiver implements IXposedH
         return notificationId;
     }
 
-    public int createNotification(Context context, String title, UnexpectedException e, String... details) {
-        if (context == null) {
-            Logger.w("Cannot create notification without context.");
-            return -1;
-        }
-
+    public int createNotification(String title, UnexpectedException e, String... details) {
+        Context context = getApplicationContext();
         ByteArrayOutputStream byteStream = new ByteArrayOutputStream();
         e.printStackTrace(new PrintStream(byteStream));
         String[] newDetails = new String[details.length + 2];
         newDetails[0] = e.getMessage();
         System.arraycopy(details, 0, newDetails, 1, details.length);
         newDetails[newDetails.length - 1] = byteStream.toString();
-        return createNotification(context, title, newDetails);
+        return createNotification(title, newDetails);
     }
 
     public PendingIntent buildIntentForNotification(Context context, String subject, String... details) {

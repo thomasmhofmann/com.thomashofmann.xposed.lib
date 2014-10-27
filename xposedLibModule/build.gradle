@@ -32,7 +32,7 @@ dependencies {
 
 apply plugin: 'maven'
 
-def aarFile = file('build/outputs/aar/libXposedModule.aar')
+def aarFile = file('build/outputs/aar/xposedLibModule.aar')
 
 artifacts {
     archives aarFile
@@ -42,8 +42,8 @@ uploadArchives() {
     repositories {
         mavenDeployer {
             repository(url: "file:///c:/myrepo/android")
-            pom.groupId = 'xposed'
-            pom.artifactId = 'xposed.lib'
+            pom.groupId = 'com.thomashofmann.xposed'
+            pom.artifactId = 'lib'
             pom.version = '1.0.0-SNAPSHOT'
         }
     }
