@@ -5,7 +5,7 @@ public class ReturnFixedValueHook extends MethodHook {
     private Object fixedValue;
 
     public ReturnFixedValueHook(Object fixedValue) {
-        super(null);
+        super(null, null);
         this.fixedValue = fixedValue;
     }
 

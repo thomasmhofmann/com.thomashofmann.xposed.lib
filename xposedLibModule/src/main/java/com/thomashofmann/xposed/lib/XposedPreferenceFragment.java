@@ -12,6 +12,7 @@ public abstract class XposedPreferenceFragment extends PreferenceFragment { // i
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         getPreferenceManager().setSharedPreferencesName(Settings.SETTINGS_FILE_NAME);
+        //noinspection deprecation
         getPreferenceManager().setSharedPreferencesMode(Context.MODE_WORLD_READABLE);
         //getPreferenceManager().getSharedPreferences().registerOnSharedPreferenceChangeListener(this);
     }

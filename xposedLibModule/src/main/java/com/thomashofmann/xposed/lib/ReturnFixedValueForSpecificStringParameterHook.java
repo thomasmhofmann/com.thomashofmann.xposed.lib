@@ -9,7 +9,7 @@ public class ReturnFixedValueForSpecificStringParameterHook  extends MethodHook{
     private int paramPosition;
 
     public ReturnFixedValueForSpecificStringParameterHook(String parameter, int paramPosition, Object fixedValue) {
-        super(null);
+        super(null, null);
         this.parameter = parameter;
         this.paramPosition = paramPosition;
         this.fixedValue = fixedValue;

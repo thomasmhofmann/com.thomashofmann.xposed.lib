@@ -5,6 +5,7 @@ import android.util.Log;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.text.MessageFormat;
 
 import de.robv.android.xposed.XposedBridge;
 
@@ -18,11 +19,19 @@ public class Logger {
         Logger.settings = settings;
     }
 
+
     static public void d(String message) {
-        Logger.d(message, null);
+        Logger.d(null, message, (Object[])null);
     }
 
-    static public void d(String message, Throwable throwable) {
+    static public void d(String message, Object... params) {
+        Logger.d(null, message, params);
+    }
+
+    static public void d(Throwable throwable, String message, Object... params) {
+        if(params != null) {
+            message = MessageFormat.format(message, params);
+        }
         if (throwable == null) {
             Log.d(tag, message);
         } else {
@@ -41,10 +50,18 @@ public class Logger {
     }
 
     static public void v(String message) {
-        Logger.v(message, null);
+        Logger.v(null, message, (Object[])null);
     }
 
-    static public void v(String message, Throwable throwable) {
+    static public void v(String message, Object... params) {
+        Logger.v(null, message, params);
+    }
+
+    static public void v(Throwable throwable, String message, Object... params) {
+        if(params != null) {
+            message = MessageFormat.format(message, params);
+        }
+
         Logger.log(message, throwable, new Procedure2<String, Throwable>() {
             @Override
             public void apply(String message, Throwable throwable) {
@@ -58,10 +75,18 @@ public class Logger {
     }
 
     static public void i(String message) {
-        Logger.i(message, null);
+        Logger.i(null, message, (Object[])null);
     }
 
-    static public void i(String message, Throwable throwable) {
+    static public void i(String message, Object... params) {
+        Logger.i(null, message, params);
+    }
+
+    static public void i(Throwable throwable, String message, Object... params) {
+        if(params != null) {
+            message = MessageFormat.format(message, params);
+        }
+
         Logger.log(message, throwable, new Procedure2<String, Throwable>() {
             @Override
             public void apply(String message, Throwable throwable) {
@@ -76,10 +101,18 @@ public class Logger {
     }
 
     static public void w(String message) {
-        Logger.w(message, null);
+        Logger.w(null, message, (Object[])null);
     }
 
-    static public void w(String message, Throwable throwable) {
+    static public void w(String message, Object... params) {
+        Logger.w(null, message, params);
+    }
+
+    static public void w(Throwable throwable, String message, Object... params) {
+        if(params != null) {
+            message = MessageFormat.format(message, params);
+        }
+
         Logger.log(message, throwable, new Procedure2<String, Throwable>() {
             @Override
             public void apply(String message, Throwable throwable) {
@@ -93,11 +126,19 @@ public class Logger {
     }
 
     static public void e(String message) {
-        Logger.e(message, null);
+        Logger.e(null, message, (Object[])null);
     }
 
-    static public void e(String message, Throwable throwable) {
-        Logger.log(message, throwable, new Procedure2<String, Throwable>() {
+    static public void e(String message, Object... params) {
+        Logger.e(null, message, params);
+    }
+
+    static public void e(Throwable throwable, String message, Object... params) {
+        if(params != null) {
+            message = MessageFormat.format(message, params);
+        }
+
+        Logger.log(message, throwable, true, new Procedure2<String, Throwable>() {
             @Override
             public void apply(String message, Throwable throwable) {
                 if (throwable == null) {
@@ -110,10 +151,14 @@ public class Logger {
     }
 
     static void log(String message, Throwable t, Procedure2<String, Throwable> code) {
-        if (shouldLog()) {
+        log(message,t, false, code);
+    }
+
+    static void log(String message, Throwable t, boolean forceLogging, Procedure2<String, Throwable> code) {
+        if (shouldLog()|| forceLogging) {
             code.apply(message, t);
         }
-        if (shouldLogToXposedLog()) {
+        if (shouldLogToXposedLog()|| forceLogging) {
             logToXposedLog(message, t);
         }
     }
