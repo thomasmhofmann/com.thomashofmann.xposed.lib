@@ -1,15 +1,16 @@
 apply plugin: 'com.android.library'
 
+def version = '1.1.0'
+
 android {
     compileSdkVersion 19
     buildToolsVersion "19.1.0"
 
     defaultConfig {
-        applicationId "xposed.lib"
         minSdkVersion 16
         targetSdkVersion 19
-        versionCode 1
-        versionName "1.0"
+        versionCode 2
+        versionName version
     }
 
     compileOptions {
@@ -19,7 +20,7 @@ android {
 
     buildTypes {
         release {
-            runProguard false
+            minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
     }
@@ -44,14 +45,9 @@ uploadArchives() {
             repository(url: "file:///c:/myrepo/android")
             pom.groupId = 'com.thomashofmann.xposed'
             pom.artifactId = 'lib'
-            pom.version = '1.0.0-SNAPSHOT'
+            pom.version = "$version-SNAPSHOT"
         }
     }
 }
 
 assembleRelease.finalizedBy uploadArchives
-
-
-android.libraryVariants.all { variant ->
-    variant.packageLibrary.exclude( 'libs/XposedBridgeApi-54.jar' )
-}
