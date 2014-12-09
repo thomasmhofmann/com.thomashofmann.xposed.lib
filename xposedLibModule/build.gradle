@@ -51,3 +51,10 @@ uploadArchives() {
 }
 
 assembleRelease.finalizedBy uploadArchives
+
+
+android.libraryVariants.all { variant ->
+    variant.outputs.each { output ->
+        output.packageLibrary.exclude('libs/XposedBridgeApi-54.jar')
+    }
+}
