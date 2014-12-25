@@ -20,35 +20,6 @@ public class Logger {
     }
 
 
-    static public void d(String message) {
-        Logger.d(null, message, (Object[])null);
-    }
-
-    static public void d(String message, Object... params) {
-        Logger.d(null, message, params);
-    }
-
-    static public void d(Throwable throwable, String message, Object... params) {
-        if(params != null) {
-            message = MessageFormat.format(message, params);
-        }
-        if (throwable == null) {
-            Log.d(tag, message);
-        } else {
-            Log.d(tag, message + '\n' + getStackTraceString(throwable));
-        }
-//        Logger.log(message, throwable, new Procedure2<String, Throwable>() {
-//            @Override
-//            public void apply(String message, Throwable throwable) {
-//                if (throwable == null) {
-//                    Log.d(tag, message);
-//                } else {
-//                    Log.d(tag, message + '\n' + getStackTraceString(throwable));
-//                }
-//            }
-//        });
-    }
-
     static public void v(String message) {
         Logger.v(null, message, (Object[])null);
     }
@@ -62,16 +33,59 @@ public class Logger {
             message = MessageFormat.format(message, params);
         }
 
-        Logger.log(message, throwable, new Procedure2<String, Throwable>() {
-            @Override
-            public void apply(String message, Throwable throwable) {
-                if (throwable == null) {
-                    Log.v(tag, message);
-                } else {
-                    Log.v(tag, message + '\n' + getStackTraceString(throwable));
+        if(shouldLogToXposedLogVerbose()) {
+            Logger.log(message, throwable, new Procedure2<String, Throwable>() {
+                @Override
+                public void apply(String message, Throwable throwable) {
+                    if (throwable == null) {
+                        Log.v(tag, message);
+                    } else {
+                        Log.v(tag, message + '\n' + getStackTraceString(throwable));
+                    }
                 }
+            });
+
+        } else {
+            if (throwable == null) {
+                Log.v(tag, message);
+            } else {
+                Log.v(tag, message + '\n' + getStackTraceString(throwable));
             }
-        });
+        }
+    }
+
+    static public void d(String message) {
+        Logger.d(null, message, (Object[])null);
+    }
+
+    static public void d(String message, Object... params) {
+        Logger.d(null, message, params);
+    }
+
+    static public void d(Throwable throwable, String message, Object... params) {
+        if(params != null) {
+            message = MessageFormat.format(message, params);
+        }
+
+        if(shouldLogToXposedLogDebug()) {
+            Logger.log(message, throwable, new Procedure2<String, Throwable>() {
+                @Override
+                public void apply(String message, Throwable throwable) {
+                    if (throwable == null) {
+                        Log.d(tag, message);
+                    } else {
+                        Log.d(tag, message + '\n' + getStackTraceString(throwable));
+                    }
+                }
+            });
+
+        } else {
+            if (throwable == null) {
+                Log.d(tag, message);
+            } else {
+                Log.d(tag, message + '\n' + getStackTraceString(throwable));
+            }
+        }
     }
 
     static public void i(String message) {
@@ -185,6 +199,14 @@ public class Logger {
 
     private static boolean shouldLogToXposedLog() {
         return Logger.settings != null && Logger.settings.getPreferences().getBoolean("pref_log_to_xposed_log_state", false);
+    }
+
+    private static boolean shouldLogToXposedLogDebug() {
+        return Logger.settings != null && Logger.settings.getPreferences().getBoolean("pref_log_to_xposed_log_debug_state", false);
+    }
+
+    private static boolean shouldLogToXposedLogVerbose() {
+        return Logger.settings != null && Logger.settings.getPreferences().getBoolean("pref_log_to_xposed_log_verbose_state", false);
     }
 
     private static String getStackTraceString(Throwable t) {

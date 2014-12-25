@@ -10,12 +10,9 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.content.res.Resources;
 import android.content.res.XModuleResources;
-import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.os.Process;
-import android.os.UserHandle;
 import android.widget.Toast;
 
 import java.io.ByteArrayOutputStream;
@@ -126,17 +123,11 @@ public abstract class XposedModule implements IXposedHookLoadPackage, IXposedHoo
             Logger.v("Executing hooked method {0} on {1}. Capturing some Context. Stacktrace is {2}", methodHookParam.method.getName(), methodHookParam.thisObject, getCurrentStackTraceString());
             Context context = (Context) methodHookParam.thisObject;
             Logger.d("Captured Context " + context);
-            if(context != null) {
+            if (context != null) {
                 Logger.d("Captured Context for package " + context.getPackageName());
-                Resources resources = context.getResources();
-                Drawable drawable = null;
-                if (resources != null) {
-                    drawable = resources.getDrawable(getNotificationIconResourceId());
-                    Logger.d("Drawable for notification icon from Context: " + drawable);
-                }
                 int pid = Process.myPid();
                 Context existingContext = applicationContextsByPid.get(pid);
-                if (existingContext == null || drawable != null) {
+                if (existingContext == null) {
                     setApplicationContext(context);
                 }
             }
@@ -146,16 +137,16 @@ public abstract class XposedModule implements IXposedHookLoadPackage, IXposedHoo
     protected void setApplicationContext(Context context) {
         int pid = Process.myPid();
         if (applicationContextsByPid.containsKey(pid)) {
-            Logger.v("Not setting ApplicationContext for PID {0}. It is already saved.", pid);
+            Logger.v("Not setting ApplicationContext for PID {0}. It is already saved.", Integer.toString(pid));
             return;
         }
-        Logger.v("Setting ApplicationContext for PID {0}. Context is {1}", pid, context);
+        Logger.v("Setting ApplicationContext for PID {0}. Context is {1}", Integer.toString(pid), context);
         applicationContextsByPid.put(pid, context);
         Logger.v("Registering BroadcastReceiver for action {0}", getPreferencesChangedAction());
         context.registerReceiver(preferencesChangedReceiver, new IntentFilter(getPreferencesChangedAction()));
         String targetPackage = targetPackagesByPid.get(pid);
         if (targetPackage == null) {
-            Logger.e("No target package found for pid " + pid);
+            Logger.e("No target package found for pid " + Integer.toString(pid));
         }
         Logger.d("applicationContextsByPid size is {0}", applicationContextsByPid.size());
         applicationContextAvailable(context);
@@ -168,7 +159,7 @@ public abstract class XposedModule implements IXposedHookLoadPackage, IXposedHoo
         int pid = Process.myPid();
         Context context = applicationContextsByPid.get(pid);
         if (context == null) {
-            throw new UnexpectedException("Application context is not available for PID {0}.",  pid);
+            throw new UnexpectedException("Application context is not available for PID {0}.", Integer.toString(pid));
         }
         return context;
     }
@@ -180,8 +171,8 @@ public abstract class XposedModule implements IXposedHookLoadPackage, IXposedHoo
     protected String getTargetPackage() {
         int pid = Process.myPid();
         String targetPackage = targetPackagesByPid.get(pid);
-        if(targetPackage == null) {
-            throw new UnexpectedException("Target Package is not available for PID {0}.",  pid);
+        if (targetPackage == null) {
+            throw new UnexpectedException("Target Package is not available for PID {0}.", Integer.toString(pid));
         }
         return targetPackage;
     }
@@ -190,8 +181,8 @@ public abstract class XposedModule implements IXposedHookLoadPackage, IXposedHoo
     protected XC_LoadPackage.LoadPackageParam getLoadPackageParam() {
         int pid = Process.myPid();
         XC_LoadPackage.LoadPackageParam loadPackageParam = loadPackageParamByPid.get(pid);
-        if(loadPackageParam == null) {
-            throw new UnexpectedException("loadPackageParam is not available for PID {0}.",  pid);
+        if (loadPackageParam == null) {
+            throw new UnexpectedException("loadPackageParam is not available for PID {0}.", Integer.toString(pid));
         }
         return loadPackageParam;
     }
@@ -250,8 +241,7 @@ public abstract class XposedModule implements IXposedHookLoadPackage, IXposedHoo
 
     protected Context retrieveSystemContextFromActivityThread() {
         try {
-            Class<?> activityThreadClass = Class.forName("and\n" +
-                    "BUILD SUCCESSFULroid.app.ActivityThread");
+            Class<?> activityThreadClass = Class.forName("android.app.ActivityThread");
             Method currentActivityThreadMethod = activityThreadClass.getDeclaredMethod("currentActivityThread");
             Object activityThread = currentActivityThreadMethod.invoke(null);
             Method getSystemContextMethod = activityThreadClass.getDeclaredMethod("getSystemContext");
@@ -268,31 +258,67 @@ public abstract class XposedModule implements IXposedHookLoadPackage, IXposedHoo
         return null;
     }
 
-    protected void hookMethod(String className, ClassLoader classLoader, String methodName, Object... parameterTypesAndCallback) {
+    protected boolean hookMethod(boolean logClassMethodsAndStacktraceOnFailure, String className, ClassLoader classLoader, String methodName, Object... parameterTypesAndCallback) {
         Logger.i("Hooking {0}#{1}", className, methodName);
         try {
             findAndHookMethodInClassHierarchy(className, classLoader, methodName, parameterTypesAndCallback);
-        } catch (Exception e) {
-            Logger.e(e, "Failed to hook method {0}#{1}", className, methodName);
+            return true;
+        } catch (Throwable t) {
+            if (logClassMethodsAndStacktraceOnFailure) {
+                Logger.e(t, "Failed to hook method {0}#{1}", className, methodName, parameterTypesAndCallback);
+            }
+            if (t instanceof NoSuchMethodException && logClassMethodsAndStacktraceOnFailure) {
+                logMethodsOfClassHierarchy(className, classLoader);
+            }
+            return false;
+        }
+    }
+
+    protected void hookMethod(String className, ClassLoader classLoader, String methodName, Object... parameterTypesAndCallback) {
+        hookMethod(true, className, classLoader, methodName, parameterTypesAndCallback);
+    }
+
+    private void logMethodsOfClassHierarchy(String className, ClassLoader classLoader) {
+        Class clazz = XposedHelpers.findClass(className, classLoader);
+        logMethodsOfClass(clazz, classLoader);
+        Class superclass = clazz.getSuperclass();
+        if (superclass != null) {
+            logMethodsOfClassHierarchy(superclass.getName(), classLoader);
+        }
+    }
+
+    private void logMethodsOfClass(Class clazz, ClassLoader classLoader) {
+        Logger.i("Methods for class: {0}", clazz.toString());
+        for (Method method : clazz.getDeclaredMethods()) {
+            String methodName = method.getName();
+            Logger.i("Method name: {0}", methodName);
+            Class<?>[] parameterTypes = method.getParameterTypes();
+            StringBuilder stringBuilder = new StringBuilder();
+            for (Class parameterType : parameterTypes) {
+                stringBuilder.append(parameterType.toString());
+                stringBuilder.append(" , ");
+            }
+            Logger.i("ParameterTypes: {0}", stringBuilder.toString());
         }
     }
 
     protected XC_MethodHook.Unhook findAndHookMethodInClassHierarchy(String className, ClassLoader classLoader,
-                                                                     String methodName, Object... parameterTypesAndCallback) {
+                                                                     String methodName, Object... parameterTypesAndCallback) throws NoSuchMethodException {
         Class clazz = XposedHelpers.findClass(className, classLoader);
-        boolean notAtObject = clazz != Object.class;
-        while (notAtObject) {
+        boolean noMoreSuperclasses = false;
+        while (!noMoreSuperclasses) {
             try {
                 return XposedHelpers.findAndHookMethod(clazz, methodName, parameterTypesAndCallback);
             } catch (NoSuchMethodError e) {
-                Class superclass = clazz.getSuperclass();
-                notAtObject = superclass != Object.class;
-                Logger.d("Trying to hook method {0} for superclass {1}", methodName, superclass);
-                return findAndHookMethodInClassHierarchy(superclass.getName(), classLoader, methodName,
-                        parameterTypesAndCallback);
+                clazz = clazz.getSuperclass();
+                if (clazz != null) {
+                    Logger.d("Trying to hook method {0} for superclass {1}", methodName, clazz);
+                } else {
+                    noMoreSuperclasses = true;
+                }
             }
         }
-        throw new NoSuchMethodError(methodName);
+        throw new NoSuchMethodException(methodName);
     }
 
     public Settings getSettings() {
@@ -304,11 +330,12 @@ public abstract class XposedModule implements IXposedHookLoadPackage, IXposedHoo
 
     @Override
     public void initZygote(IXposedHookZygoteInit.StartupParam startupParam) throws Throwable {
+        Logger.d("initZygote called for " + startupParam.modulePath);
         modulePath = startupParam.modulePath;
         try {
             doInitZygote(startupParam);
         } catch (Exception e) {
-            throw new UnexpectedException("Exception from doInitZygote", e);
+            throw new UnexpectedException(e, "Exception from doInitZygote");
         }
     }
 
@@ -317,21 +344,26 @@ public abstract class XposedModule implements IXposedHookLoadPackage, IXposedHoo
 
     @Override
     public void handleInitPackageResources(XC_InitPackageResources.InitPackageResourcesParam resparam) throws Throwable {
-        Logger.d("handleInitPackageResources called for " + resparam.packageName);
         List<String> targets = getTargetPackageNames();
         if (targets == null || !targets.contains(resparam.packageName)) {
             return;
         }
-        Logger.d("Creating moduleResources");
-        XModuleResources moduleResources = XModuleResources.createInstance(modulePath, resparam.res);
-        resparam.res.setReplacement(MODULE_DRAWABLE_NOTIFICATION_ICON, moduleResources.fwd(getNotificationIconResourceId()));
-        Logger.d("Set resource replacement for " + MODULE_DRAWABLE_NOTIFICATION_ICON + " to " + getNotificationIconResourceId());
+        Logger.i("handleInitPackageResources called for " + resparam.packageName);
         try {
-            doHandleInitPackageResources(resparam, moduleResources);
-        } catch (Exception e) {
-            throw new UnexpectedException("Exception from doHandleInitPackageResources", e);
+            Logger.i("Creating moduleResources");
+            XModuleResources moduleResources = XModuleResources.createInstance(modulePath, resparam.res);
+            resparam.res.setReplacement(MODULE_DRAWABLE_NOTIFICATION_ICON, moduleResources.fwd(getNotificationIconResourceId()));
+            Logger.i("Set resource replacement for {0} to  {1}", Integer.toHexString(MODULE_DRAWABLE_NOTIFICATION_ICON), Integer.toHexString(getNotificationIconResourceId()));
+            try {
+                doHandleInitPackageResources(resparam, moduleResources);
+            } catch (Exception e) {
+                throw new UnexpectedException(e, "Exception from doHandleInitPackageResources");
+            }
+        } catch (Throwable t) {
+            Logger.e(t, "Unable to replace resource for notification icon.");
         }
     }
+
 
     protected void doHandleInitPackageResources(XC_InitPackageResources.InitPackageResourcesParam resparam, XModuleResources moduleResources) {
     }
@@ -343,18 +375,19 @@ public abstract class XposedModule implements IXposedHookLoadPackage, IXposedHoo
             return;
         }
         int pid = Process.myPid();
-        Logger.i("Going to hook application {0} in PID {1}", loadPackageParam.packageName, pid);
+        Logger.i("Going to hook application {0} in PID {1}", loadPackageParam.packageName, Integer.toString(pid));
         targetPackagesByPid.put(pid, loadPackageParam.packageName);
         loadPackageParamByPid.put(pid, loadPackageParam);
         captureApplicationContext(loadPackageParam);
         try {
             doHandleLoadPackage();
         } catch (Exception e) {
-            throw new UnexpectedException("Exception from doHandleLoadPackage", e);
+            throw new UnexpectedException(e, "Exception from doHandleLoadPackage");
         }
     }
 
     protected abstract void doHandleLoadPackage();
+
 
     protected Notification.Builder createSimpleNotification(Context context, String contentTitle, String contentText, String subText) {
         Logger.i("createSimpleNotification with title {0}, text {1}, subText {2}", contentTitle, contentText, subText);
@@ -423,7 +456,7 @@ public abstract class XposedModule implements IXposedHookLoadPackage, IXposedHoo
             notificationManager.notify(notificationId, notificationBuilder.build());
             this.notificationId = this.notificationId + 1;
             return notificationId;
-        } catch(Throwable t) {
+        } catch (Throwable t) {
             Logger.e(t, "Unable to show notification");
             return -1;
         }
@@ -436,7 +469,7 @@ public abstract class XposedModule implements IXposedHookLoadPackage, IXposedHoo
         Notification.Builder notification = createBigTextStyleNotification(context, contentTitle, e.getMessage(), "Expand for details", null, stackTrace, "Stacktrace");
         PendingIntent pendingIntent = buildActionSendPendingIntent(context, contentTitle, e.getMessage(), stackTrace);
         notification.setContentIntent(pendingIntent);
-        return showNotification(context,notification);
+        return showNotification(context, notification);
     }
 
     protected String getCurrentStackTraceString() {
@@ -468,7 +501,7 @@ public abstract class XposedModule implements IXposedHookLoadPackage, IXposedHoo
         return PendingIntent.getActivity(context, notificationId, intent, PendingIntent.FLAG_ONE_SHOT);
     }
 
-    public int getNotificationIconResourceId() {
+    protected int getNotificationIconResourceId() {
         return 0x7f020000;
     }
 

@@ -8,11 +8,11 @@ public class LogMethodInvocationHook extends MethodHook {
     }
 
     protected void beforeHookedMethod(XC_MethodHook.MethodHookParam methodHookParam) {
-        Logger.d("Executing hook " + getMethodName(methodHookParam) + " called with values " + getMethodParameterString(methodHookParam));
+        Logger.v("Executing hook " + getMethodName(methodHookParam) + " called with values " + getMethodParameterString(methodHookParam));
     }
 
     protected void afterHookedMethod(XC_MethodHook.MethodHookParam methodHookParam) {
-        Logger.d(getMethodName(methodHookParam) + " returns with " + methodHookParam.getResult());
+        Logger.v(getMethodName(methodHookParam) + " returns with " + methodHookParam.getResult());
     }
 
 }

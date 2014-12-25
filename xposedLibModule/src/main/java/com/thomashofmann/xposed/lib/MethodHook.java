@@ -24,26 +24,26 @@ public class MethodHook extends XC_MethodHook {
         if(beforeCode == null) {
             return;
         }
-        Logger.d("Executing hook " + getMethodName(methodHookParam) + " called with values " + getMethodParameterString(methodHookParam));
+        Logger.v("Executing hook " + getMethodName(methodHookParam) + " called with values " + getMethodParameterString(methodHookParam));
         try {
             beforeCode.apply(methodHookParam);
         } catch(Throwable t) {
             Logger.e(t,"Exception in before hook");
         }
-        Logger.d(getMethodName(methodHookParam) + " returns with " + methodHookParam.getResult());
+        Logger.v(getMethodName(methodHookParam) + " returns with " + methodHookParam.getResult());
     }
 
     protected void afterHookedMethod(XC_MethodHook.MethodHookParam methodHookParam) throws Throwable {
         if(afterCode == null) {
             return;
         }
-        Logger.d(getMethodName(methodHookParam) + " called with result " + methodHookParam.getResult());
+        Logger.v(getMethodName(methodHookParam) + " called with result " + methodHookParam.getResult());
         try {
             afterCode.apply(methodHookParam);
         } catch(Throwable t) {
             Logger.e(t,"Exception in after hook");
         }
-        Logger.d(getMethodName(methodHookParam) + " returns with result " +methodHookParam.getResult());
+        Logger.v(getMethodName(methodHookParam) + " returns with result " +methodHookParam.getResult());
     }
 
     protected String getMethodParameterString(XC_MethodHook.MethodHookParam param) {

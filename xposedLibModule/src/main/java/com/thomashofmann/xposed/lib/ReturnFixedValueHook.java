@@ -11,7 +11,7 @@ public class ReturnFixedValueHook extends MethodHook {
 
     protected void beforeHookedMethod(MethodHookParam methodHookParam) throws Throwable {
         try {
-            Logger.d("Executing hooked method " + methodHookParam.method.getName() + ". Returning fixed value " + fixedValue);
+            Logger.v("Executing hooked method " + methodHookParam.method.getName() + ". Returning fixed value " + fixedValue);
             methodHookParam.setResult(fixedValue);
         } catch (Throwable t) {
             methodHookParam.setThrowable(t);
