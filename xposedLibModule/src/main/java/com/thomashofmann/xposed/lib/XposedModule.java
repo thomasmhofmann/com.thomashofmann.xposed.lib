@@ -2,8 +2,8 @@ package com.thomashofmann.xposed.lib;
 
 import android.app.Activity;
 import android.app.Application;
-import android.app.Notification;
-import android.app.NotificationManager;
+import android.support.v4.app.NotificationCompat;
+import android.support.v4.app.NotificationManagerCompat;
 import android.app.PendingIntent;
 import android.app.Service;
 import android.content.BroadcastReceiver;
@@ -389,9 +389,9 @@ public abstract class XposedModule implements IXposedHookLoadPackage, IXposedHoo
     protected abstract void doHandleLoadPackage();
 
 
-    protected Notification.Builder createSimpleNotification(Context context, String contentTitle, String contentText, String subText) {
+    protected NotificationCompat.Builder createSimpleNotification(Context context, String contentTitle, String contentText, String subText) {
         Logger.i("createSimpleNotification with title {0}, text {1}, subText {2}", contentTitle, contentText, subText);
-        Notification.Builder builder = new Notification.Builder(context);
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(context);
         builder.setSmallIcon(MODULE_DRAWABLE_NOTIFICATION_ICON).
                 setContentTitle(contentTitle).
                 setContentText(contentText).
@@ -400,20 +400,20 @@ public abstract class XposedModule implements IXposedHookLoadPackage, IXposedHoo
     }
 
     protected int createAndShowSimpleNotification(Context context, String contentTitle, String contentText, String subText) {
-        Notification.Builder notification = createSimpleNotification(context, contentTitle, contentText, subText);
+        NotificationCompat.Builder notification = createSimpleNotification(context, contentTitle, contentText, subText);
         return showNotification(context, notification);
     }
 
-    protected Notification.Builder createBigTextStyleNotification(Context context, String contentTitle, String contentText, String subText,
+    protected NotificationCompat.Builder createBigTextStyleNotification(Context context, String contentTitle, String contentText, String subText,
                                                                   String bigTextTitle, String bigText, String bigTextSummary) {
         Logger.i("createBigTextStyleNotification with title {0}, text {1}, subText {2}, bigTextTitle {3}, bigText {4}, bigTextSummary {5}",
                 contentTitle, contentText, subText, bigTextTitle, bigText, bigTextSummary);
-        Notification.Builder builder = new Notification.Builder(context);
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(context);
         builder.setSmallIcon(MODULE_DRAWABLE_NOTIFICATION_ICON).
                 setContentTitle(contentTitle).
                 setContentText(contentText).
                 setSubText(subText);
-        Notification.BigTextStyle bigTextStyle = new Notification.BigTextStyle();
+        NotificationCompat.BigTextStyle bigTextStyle = new NotificationCompat.BigTextStyle();
         if (bigTextTitle != null) {
             bigTextStyle.setBigContentTitle(bigTextTitle);
         }
@@ -423,17 +423,17 @@ public abstract class XposedModule implements IXposedHookLoadPackage, IXposedHoo
         return builder;
     }
 
-    protected Notification.Builder createInboxStyleNotification(Context context, String contentTitle, String contentText, String subText,
+    protected NotificationCompat.Builder createInboxStyleNotification(Context context, String contentTitle, String contentText, String subText,
                                                                 String inboxSummary, String... inboxContents) {
         Logger.i("createBigTextStyleNotification with title {0}, text {1}, subText {2}, inboxSummary {3}",
                 contentTitle, contentText, subText, inboxSummary);
-        Notification.Builder builder = new Notification.Builder(context);
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(context);
         builder.setSmallIcon(MODULE_DRAWABLE_NOTIFICATION_ICON).
                 setContentTitle(contentTitle).
                 setContentText(contentText).
                 setSubText(subText);
         if (inboxContents != null) {
-            Notification.InboxStyle inboxStyle = new Notification.InboxStyle();
+            NotificationCompat.InboxStyle inboxStyle = new NotificationCompat.InboxStyle();
             inboxStyle.setSummaryText(inboxSummary);
             for (String line : inboxContents) {
                 inboxStyle.addLine(line);
@@ -443,13 +443,13 @@ public abstract class XposedModule implements IXposedHookLoadPackage, IXposedHoo
         return builder;
     }
 
-    protected int showNotification(Context context, Notification.Builder notificationBuilder) {
+    protected int showNotification(Context context, NotificationCompat.Builder notificationBuilder) {
         return showNotification(context, notificationBuilder, -1);
     }
 
-    protected int showNotification(Context context, Notification.Builder notificationBuilder, int notificationId) {
+    protected int showNotification(Context context, NotificationCompat.Builder notificationBuilder, int notificationId) {
         try {
-            NotificationManager notificationManager = getNotificationManager(context);
+            NotificationManagerCompat notificationManager = getNotificationManager(context);
             if (notificationId == -1) {
                 notificationId = this.notificationId;
             }
@@ -466,7 +466,7 @@ public abstract class XposedModule implements IXposedHookLoadPackage, IXposedHoo
         Logger.i("createAndShowNotification with title {0}, exception {1}",
                 contentTitle, e);
         String stackTrace = getStackTraceString(e);
-        Notification.Builder notification = createBigTextStyleNotification(context, contentTitle, e.getMessage(), "Expand for details", null, stackTrace, "Stacktrace");
+        NotificationCompat.Builder notification = createBigTextStyleNotification(context, contentTitle, e.getMessage(), "Expand for details", null, stackTrace, "Stacktrace");
         PendingIntent pendingIntent = buildActionSendPendingIntent(context, contentTitle, e.getMessage(), stackTrace);
         notification.setContentIntent(pendingIntent);
         return showNotification(context, notification);
@@ -505,8 +505,8 @@ public abstract class XposedModule implements IXposedHookLoadPackage, IXposedHoo
         return 0x7f020000;
     }
 
-    protected NotificationManager getNotificationManager(Context context) {
-        return (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+    protected NotificationManagerCompat getNotificationManager(Context context) {
+        return NotificationManagerCompat.from(context);
     }
 
     public void displayToast(Context context, String text) {
