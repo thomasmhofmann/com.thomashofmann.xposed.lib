@@ -1,15 +1,20 @@
 apply plugin: 'com.android.library'
 
-def version = '1.3.0'
+def version = '1.3.3'
+
+project.ext{
+    releaseRepoUrl = "file://${project(':').projectDir}/../../mvn-repo/releases"
+    snapshotRepoUrl = "file://${project(':').projectDir}/../../mvn-repo/snapshots"
+}
 
 android {
     compileSdkVersion 19
     buildToolsVersion "19.1.0"
 
     defaultConfig {
-        minSdkVersion 4
+        minSdkVersion 9
         targetSdkVersion 19
-        versionCode 3
+        versionCode 4
         versionName version
     }
 
@@ -27,23 +32,24 @@ android {
 }
 
 dependencies {
-    compile "com.android.support:support-v4:21.0.+"
+    compile "com.android.support:support-v4:22.1.1"
     compile fileTree(dir: 'libs', include: ['*.jar'])
     provided fileTree(dir: 'lib-xposed', include: ['*.jar'])
 }
 
 apply plugin: 'maven'
 
-def aarFile = file('build/outputs/aar/xposedLibModule.aar')
+def aarFile = file('build/outputs/aar/xposedLibModule-release.aar')
 
 artifacts {
-    archives aarFile
+    //archives aarFile
 }
 
 uploadArchives() {
     repositories {
         mavenDeployer {
-            repository(url: "file:///c:/myrepo/android")
+            repository(url: project.releaseRepoUrl)
+            snapshotRepository(url: project.snapshotRepoUrl)
             pom.groupId = 'com.thomashofmann.xposed'
             pom.artifactId = 'lib'
             pom.version = "$version-SNAPSHOT"

@@ -11,7 +11,7 @@ import android.util.Log;
 public abstract class XposedPreferenceActivity extends PreferenceActivity implements SharedPreferences.OnSharedPreferenceChangeListener {
 
     @Override
-    public void onCreate(Bundle savedInstanceState) {
+    protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         getPreferenceManager().setSharedPreferencesName(Settings.SETTINGS_FILE_NAME);
         //noinspection deprecation
@@ -21,25 +21,22 @@ public abstract class XposedPreferenceActivity extends PreferenceActivity implem
 
 
     @Override
-    public void onResume() {
+    protected void onResume() {
         super.onResume();
-        Log.i("xmso", "Registering OnSharedPreferenceChangeListener.");
+        Log.d(Settings.TAG, "Registering OnSharedPreferenceChangeListener.");
         getPreferenceManager().getSharedPreferences().registerOnSharedPreferenceChangeListener(this);
     }
 
     @Override
-    public void onPause() {
+    protected void onPause() {
         super.onPause();
-        Log.i("xmso", "Unregistering OnSharedPreferenceChangeListener.");
+        Log.d(Settings.TAG, "Unregistering OnSharedPreferenceChangeListener.");
         getPreferenceManager().getSharedPreferences().unregisterOnSharedPreferenceChangeListener(this);
-//        Log.i("xmso", "Sending broadcast to trigger reload of preferences.");
-//        Intent intent = new Intent(getPreferencesChangedAction());
-//        sendBroadcast(intent);
     }
 
     @Override
     public void onSharedPreferenceChanged(SharedPreferences paramSharedPreferences, String paramString) {
-        Log.i("xmso", "SharedPreference have changed. Sending broadcast.");
+        Log.d(Settings.TAG, "SharedPreference have changed. Sending broadcast.");
         Intent intent = new Intent(getPreferencesChangedAction());
         sendBroadcast(intent);
     }

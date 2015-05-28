@@ -49,11 +49,13 @@ public abstract class XposedModule implements IXposedHookLoadPackage, IXposedHoo
         public void onReceive(Context context, Intent intent) {
             Logger.d("Received intent {0}", intent);
             try {
-                if (intent.getAction().equals(getPreferencesChangedAction())) {
-                    Logger.i("Reloading settings due to broadcast.");
-                    settings.reload();
-                    doHandlePreferenceChanges();
+                try {
+                    Thread.currentThread().sleep(100);
+                } catch (InterruptedException e) {
                 }
+                Logger.i("Reloading settings due to broadcast.");
+                settings.reload();
+                doHandlePreferenceChanges();
             } catch (Throwable t) {
                 Logger.e(t, "Exception during Intent processing.");
             }
@@ -193,12 +195,14 @@ public abstract class XposedModule implements IXposedHookLoadPackage, IXposedHoo
             //Logger.w("appInfo in LoadPackageParam is null. Trying to hook first ContextImpl creation to retrieve a context.");
             //hookFirstContextCreation(loadPackageParam);
         } else {
-            hookApplication(loadPackageParam);
+            hookApplication(loadPackageParam, null);
         }
     }
 
-    private void hookApplication(XC_LoadPackage.LoadPackageParam loadPackageParam) {
-        String className = loadPackageParam.appInfo.className;
+    protected void hookApplication(XC_LoadPackage.LoadPackageParam loadPackageParam, String className) {
+        if (className == null && loadPackageParam.appInfo != null) {
+            className = loadPackageParam.appInfo.className;
+        }
         ClassLoader classLoader = loadPackageParam.classLoader;
         Logger.d("Setting up hook to capture application context called for class {0}", className);
         if (loadPackageParam.isFirstApplication) {
@@ -213,16 +217,18 @@ public abstract class XposedModule implements IXposedHookLoadPackage, IXposedHoo
             BeforeMethodHook onTerminateHook = new BeforeMethodHook(this.hookApplicationContextOnTerminateCode);
             if (Activity.class.isAssignableFrom(clazz)) {
                 hookMethod(className, loadPackageParam.classLoader, "onCreate", Bundle.class, onCreateHook);
-                hookMethod(className, loadPackageParam.classLoader, "onTerminate", onTerminateHook);
+                hookMethod(className, loadPackageParam.classLoader, "onDestroy", onTerminateHook);
             } else if (Service.class.isAssignableFrom(clazz)) {
                 hookMethod(className, loadPackageParam.classLoader, "onCreate", onCreateHook);
-                hookMethod(className, loadPackageParam.classLoader, "onTerminate", onTerminateHook);
+                hookMethod(className, loadPackageParam.classLoader, "onDestroy", onTerminateHook);
             } else if (Application.class.isAssignableFrom(clazz)) {
                 hookMethod(className, loadPackageParam.classLoader, "onCreate", onCreateHook);
                 hookMethod(className, loadPackageParam.classLoader, "onTerminate", onTerminateHook);
             } else {
                 Logger.w("Don't know how to hook {0} to retrieve application context from.", className);
             }
+        } else {
+            Logger.w("{0} is NOT main application for process {1}", className, loadPackageParam.processName);
         }
     }
 
@@ -252,7 +258,7 @@ public abstract class XposedModule implements IXposedHookLoadPackage, IXposedHoo
             } else {
                 Logger.v("Result of getSystemContext method call on ActivityThread is {0}", systemContext);
             }
-        } catch (ClassNotFoundException | IllegalAccessException | NoSuchMethodException | InvocationTargetException e) {
+        } catch (Exception e) {
             Logger.w(e.toString());
         }
         return null;
@@ -405,7 +411,7 @@ public abstract class XposedModule implements IXposedHookLoadPackage, IXposedHoo
     }
 
     protected NotificationCompat.Builder createBigTextStyleNotification(Context context, String contentTitle, String contentText, String subText,
-                                                                  String bigTextTitle, String bigText, String bigTextSummary) {
+                                                                        String bigTextTitle, String bigText, String bigTextSummary) {
         Logger.i("createBigTextStyleNotification with title {0}, text {1}, subText {2}, bigTextTitle {3}, bigText {4}, bigTextSummary {5}",
                 contentTitle, contentText, subText, bigTextTitle, bigText, bigTextSummary);
         NotificationCompat.Builder builder = new NotificationCompat.Builder(context);
@@ -424,7 +430,7 @@ public abstract class XposedModule implements IXposedHookLoadPackage, IXposedHoo
     }
 
     protected NotificationCompat.Builder createInboxStyleNotification(Context context, String contentTitle, String contentText, String subText,
-                                                                String inboxSummary, String... inboxContents) {
+                                                                      String inboxSummary, String... inboxContents) {
         Logger.i("createBigTextStyleNotification with title {0}, text {1}, subText {2}, inboxSummary {3}",
                 contentTitle, contentText, subText, inboxSummary);
         NotificationCompat.Builder builder = new NotificationCompat.Builder(context);
